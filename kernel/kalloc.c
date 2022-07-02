@@ -90,5 +90,5 @@ uint64 kfree_mem(void){
     len++;
   }
   printf("freemem is %d\n",len );
-  return len * 4096;
+  return len * PGSIZE;
 }

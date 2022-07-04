@@ -76,14 +76,49 @@ sys_sleep(void)
 }
 
 
-#ifdef LAB_PGTBL
+// #ifdef LAB_PGTBL
 int
 sys_pgaccess(void)
 {
   // lab pgtbl: your code here.
+  uint64 start;
+  int num_pages;
+  uint64 resultAddr;
+  uint64 result;
+  if(argaddr(0, &start) < 0){
+    return -1;
+  }
+
+  if(argint(1, &num_pages) < 0){
+    return -1;
+  }
+  if(num_pages > 64){
+    return -1;
+  }
+
+  if(argaddr(2, &resultAddr)){
+    return -1;
+  }
+  pagetable_t pagetable = myproc()->pagetable;
+
+  result = 0;
+	for(int i =0; i < num_pages; i++){
+    pte_t *pte = walk(pagetable, start + (i * PGSIZE), 0);
+    printf("\n\n%d\n", i);
+    printf("%p\n", PTE_A);
+    printf("%p\n", *pte);
+    if(*pte & PTE_A){
+      printf("access found in [%d]\n", i);
+      result |= 1L << i;
+    }
+    *pte &= ~PTE_A;
+  }
+  copyout(pagetable, resultAddr, (char*)&result, sizeof(uint64));
+
+
   return 0;
 }
-#endif
+// #endif
 
 uint64
 sys_kill(void)
@@ -107,3 +142,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+

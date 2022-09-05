@@ -25,6 +25,18 @@ static struct {
 
 static char digits[] = "0123456789abcdef";
 
+void backtrace(){
+  uint64 fp = r_fp();
+  uint64 top_of_page = PGROUNDUP(fp);
+  printf("backtrace:\n");
+
+  while(fp < top_of_page){
+    uint64 ra = *((uint64*) (fp - 8));
+    fp = *((uint64*) (fp - 16));
+    printf("%p\n", ra);
+  }
+  return;
+}
 static void
 printint(int xx, int base, int sign)
 {
@@ -117,6 +129,7 @@ printf(char *fmt, ...)
 void
 panic(char *s)
 {
+  backtrace();
   pr.locking = 0;
   printf("panic: ");
   printf(s);

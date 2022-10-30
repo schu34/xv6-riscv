@@ -1,3 +1,4 @@
+#include "stdlib.h"
 #include "types.h"
 #include "param.h"
 #include "memlayout.h"
@@ -77,8 +78,26 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){ 
+  	// handle any alarms that have been set
+    // printf("p->ticks: %d\n", p->ticks);
+    // printf("p->alarmfreq: %d\n", p->alarmfreq);
+    // printf("p->alarmhandler: %p\n", p->alarmhandler);
+    if(p->alarmfreq){
+      p->ticks++;
+      if(p->ticks == p->alarmfreq && !p->trapframe_alarm_backup){
+        // printf("epc in usertrap: %p\n", p->trapframe->epc);
+        //save the old trapfarm into the alarm backup
+        struct trapframe tf;
+        // printf("pre_alarm_epc: %p\n", pre_alarm_epc);
+        copy_tf(&tf, *p->trapframe);
+        p->trapframe_alarm_backup = &tf;
+        p->ticks = 0;
+        p->trapframe->epc = (uint64) p->alarmhandler;
+      }
+    }
     yield();
+  }
 
   usertrapret();
 }

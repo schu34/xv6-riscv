@@ -105,4 +105,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  int alarmfreq;
+  int ticks;
+  uint64 alarmhandler;
+  struct trapframe *trapframe_alarm_backup; //this is where we save the trapframe values/ restore them from when an alarm is called
 };
+
+void copy_tf(struct trapframe* dst, const struct trapframe src);

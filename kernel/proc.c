@@ -150,6 +150,7 @@ found:
 static void
 freeproc(struct proc *p)
 {
+  printf("freeproc: %s\n", p->name);
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;

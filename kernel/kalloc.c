@@ -23,11 +23,51 @@ struct {
   struct run *freelist;
 } kmem;
 
+
+// static const int 
+#define MAXREFIDX (PHYSTOP / 4096)
+
+int pagerefcounts[MAXREFIDX];
+int is_init = 0;
+
+void
+kmutaterefcount(uint64 pageaddr, int change){
+  // printf("kmutaterefcount: %p, %d\n", pageaddr, change);
+  if(pageaddr % 4096)  panic("kmutaterefcount: address must be page aligned");
+  if(change != 1 && change != -1) panic("kmutaterefcount: address must be page aligned");
+  
+  int idx  = pageaddr / 4096;
+  //printf("%d\n\n",pagerefcounts[idx]);
+  pagerefcounts[idx] += change;
+  //printf("%p: ref count after: %d\n\n",pageaddr,pagerefcounts[idx]);
+  if(pagerefcounts[idx] < 0) panic("kmutaterefcount: page can't have less than 0 references");
+}
+
+void
+ksetrefcount(uint64 pageaddr, int newval){
+  // printf("kmutaterefcount: %p, %d\n", pageaddr, change);
+  if(pageaddr % 4096)  panic("kmutaterefcount: address must be page aligned");
+  // if(change != 1 && change != -1) panic("kmutaterefcount: address must be page aligned");
+  
+  int idx  = pageaddr / 4096;
+  //printf("%p: ref count before: %d\n\n",pageaddr,pagerefcounts[idx]);
+  pagerefcounts[idx] = newval;
+  if(pagerefcounts[idx] < 0) panic("kmutaterefcount: page can't have less than 0 references");
+}
+
+int
+kgetrefcount(uint64 pageaddr){
+  int idx = pageaddr / 4096;
+  return pagerefcounts[idx];
+}
+
 void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
+  is_init = 1;
+  
 }
 
 void
@@ -46,6 +86,13 @@ freerange(void *pa_start, void *pa_end)
 void
 kfree(void *pa)
 {
+  if(is_init){
+    kmutaterefcount((uint64)pa, -1);
+    if(kgetrefcount((uint64)pa) >= 1){
+      //printf("not freeing %p, has %d refs\n", pa, kgetrefcount((uint64)pa));
+     return;
+    }
+  }  
   struct run *r;
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
@@ -78,5 +125,8 @@ kalloc(void)
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
+
+  ksetrefcount((uint64)r, 1);
   return (void*)r;
 }
+

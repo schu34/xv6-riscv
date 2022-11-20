@@ -29,7 +29,8 @@ simpletest()
 
 	printf("about to fork...\n");
   int pid = fork();
-	printf("forked...\n");
+  sleep(10);	
+  printf("forked...\n");
   if(pid < 0){
     printf("fork() failed\n");
     exit(-1);
@@ -190,11 +191,11 @@ main(int argc, char *argv[])
   // check that the first simpletest() freed the physical memory.
   simpletest();
 
-  // threetest();
-  // threetest();
-  // threetest();
+  threetest();
+  threetest();
+  threetest();
 
-  // filetest();
+  filetest();
 
   printf("ALL COW TESTS PASSED\n");
 

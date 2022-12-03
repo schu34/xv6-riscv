@@ -27,23 +27,17 @@ simpletest()
     *(int*)q = getpid();
   }
 
-	printf("about to fork...\n");
   int pid = fork();
-  sleep(10);	
-  printf("forked...\n");
   if(pid < 0){
     printf("fork() failed\n");
     exit(-1);
   }
-	printf("after if\n");
 
   if(pid == 0)
     exit(0);
 
-	printf("waiting:\n");
   wait(0);
 
-	printf("sbrk...\n");
   if(sbrk(-sz) == (char*)0xffffffffffffffffL){
     printf("sbrk(-%d) failed\n", sz);
     exit(-1);

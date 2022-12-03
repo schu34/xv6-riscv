@@ -457,6 +457,8 @@ readi(struct inode *ip, int user_dst, uint64 dst, uint off, uint n)
 {
   uint tot, m;
   struct buf *bp;
+  struct proc *p = myproc();
+  if(user_dst && walkaddr(p->pagetable, dst) == 0) return -1;
 
   if(off > ip->size || off + n < off)
     return 0;

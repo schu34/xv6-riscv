@@ -89,7 +89,7 @@ kfree(void *pa)
   if(is_init){
     kmutaterefcount((uint64)pa, -1);
     if(kgetrefcount((uint64)pa) >= 1){
-      //printf("not freeing %p, has %d refs\n", pa, kgetrefcount((uint64)pa));
+      // printf("not freeing %p, has %d refs\n", pa, kgetrefcount((uint64)pa));
      return;
     }
   }  

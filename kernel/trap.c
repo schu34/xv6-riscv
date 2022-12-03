@@ -64,30 +64,37 @@ usertrap(void) {
 
     syscall();
   } else if (r_scause() == 15) {
-    //printf("stval: %p\n", r_stval());
+    // printf("stval: %p\n", r_stval());
     //printf("sepc: %p\n", r_sepc());
     struct proc* mp = myproc();
 
     pagetable_t pt = mp->pagetable;
     //printf("page fault was in %s\n", mp->name);
     uint64 faulting_addr = r_stval();
+    if(faulting_addr >= MAXVA){
 
-    pte_t* pte = walk(pt, faulting_addr, 0);
-    uint64 faulting_pa = PTE2PA(*pte);
+      p->killed = 1; 
+    }else{
+      pte_t* pte = walk(pt, faulting_addr, 0);
+      uint64 faulting_pa = PTE2PA(*pte);
 
-    void* new_page;
+      void* new_page;
 
-    if((new_page = kalloc()) == 0){
-      panic("cow: kalloc");
+      if((new_page = kalloc()) == 0){
+        p->killed = 1;
+        goto kill;
+        // panic("cow: kalloc");
+      }
+
+      memmove(new_page, (void *)faulting_pa, PGSIZE);
+      //printf("Old: %p| \nnew: %p|\n", faulting_pa, new_page);
+      
+      int flags = PTE_FLAGS(*pte) | PTE_W; 
+      uvmunmap(pt, PGROUNDDOWN(faulting_addr), 1, 1);
+      // kmutaterefcount(faulting_pa, -1);
+      mappages(pt, faulting_addr, 1, (uint64)new_page, flags);
+
     }
-
-    memmove(new_page, (void *)faulting_pa, PGSIZE);
-    //printf("Old: %p| \nnew: %p|\n", faulting_pa, new_page);
-    
-    int flags = PTE_FLAGS(*pte) | PTE_W; 
-    uvmunmap(pt, PGROUNDDOWN(faulting_addr), 1, 1);
-    // kmutaterefcount(faulting_pa, -1);
-    mappages(pt, faulting_addr, 1, (uint64)new_page, flags);
 
   } else if ((which_dev = devintr()) != 0) {
     // ok
@@ -97,8 +104,9 @@ usertrap(void) {
     p->killed = 1;
   }
 
+  kill:
   if (p->killed)
-    exit(-1);
+      exit(-1);
 
   // give up the CPU if this is a timer interrupt.
   if (which_dev == 2)

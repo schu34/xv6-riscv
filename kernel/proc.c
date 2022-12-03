@@ -150,7 +150,7 @@ found:
 static void
 freeproc(struct proc *p)
 {
-  printf("freeproc: %s\n", p->name);
+  // printf("freeproc: %s\n", p->name);
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
@@ -607,6 +607,7 @@ either_copyout(int user_dst, uint64 dst, void *src, uint64 len)
   if(user_dst){
     return copyout(p->pagetable, dst, src, len);
   } else {
+    // if(walk(p->pagetable, dst, 0) == 0) return -1;
     memmove((char *)dst, src, len);
     return 0;
   }

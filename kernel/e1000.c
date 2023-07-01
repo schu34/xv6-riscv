@@ -92,6 +92,7 @@ e1000_init(uint32 *xregs)
   regs[E1000_IMS] = (1 << 7); // RXDW -- Receiver Descriptor Write Back
 }
 
+
 int
 e1000_transmit(struct mbuf *m)
 {
@@ -102,7 +103,39 @@ e1000_transmit(struct mbuf *m)
   // the TX descriptor ring so that the e1000 sends it. Stash
   // a pointer so that it can be freed after sending.
   //
+  // printf("e1000 transmit\n");
+  acquire(&e1000_lock);
+  uint tx_buffer_idx = regs[E1000_TDT];
+  // printf("tx_buffer_idx: %d\n", tx_buffer_idx);
+  struct tx_desc* td = &tx_ring[tx_buffer_idx];
+  if(td->status & E1000_TXD_STAT_DD ){
+    if(tx_mbufs[tx_buffer_idx]){
+      mbuffree(tx_mbufs[tx_buffer_idx]);
+    }
+  } else{
+    // printf("dd not set");
+    release(&e1000_lock);
+    return -1;
+  }
+
+  // printf("%d\n", tx_buffer_idx);
+  // printf("m->next: %p\n", m->next);
+  // printf("m->head: %s\n", m->head);
+  // printf("m->len: %d\n", m->len);
+  // printf("m->buf: %s|\n ", m->buf);
+  // printf("m: %p\n", m);
+
+  td->addr = (uint64)m->head;
+  td->length = m->len;
+  td->cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
+  regs[E1000_TDT] = (regs[E1000_TDT] + 1) % 16;
+  // td->status = td->status & (~E1000_TXD_STAT_DD);
+  // printf("tdt: %d", regs[E1000_TDT]);
+
+
   
+  // printf("success\n");
+  release(&e1000_lock);
   return 0;
 }
 
@@ -115,15 +148,39 @@ e1000_recv(void)
   // Check for packets that have arrived from the e1000
   // Create and deliver an mbuf for each packet (using net_rx()).
   //
+  // printf("e1000 recv\n");
+  while(1){
+    int rx_buffer_idx = (regs[E1000_RDT] + 1) % 16;
+    struct rx_desc* rd = &rx_ring[rx_buffer_idx];
+    if(!(rd->status & E1000_RXD_STAT_DD)){
+      return;
+    }
+    // while(!(rd->status & E1000_RXD_STAT_DD)) {
+      // sleep(&e1000_lock, &e1000_lock);
+    // }
+
+    rx_mbufs[rx_buffer_idx]->len = rd->length;
+    net_rx(rx_mbufs[rx_buffer_idx]);
+    rx_mbufs[rx_buffer_idx] = mbufalloc(0);
+    if(!rx_mbufs[rx_buffer_idx]){
+      panic("e1000");
+    }
+    rd->addr = (uint64)rx_mbufs[rx_buffer_idx]->head;
+    rd->status = rd->status & (~E1000_RXD_STAT_DD);
+    regs[E1000_RDT] = rx_buffer_idx;
+  }
 }
 
 void
 e1000_intr(void)
 {
+  // printf("e1000_intr\n");
+  // acquire(&e1000_lock);
   // tell the e1000 we've seen this interrupt;
   // without this the e1000 won't raise any
   // further interrupts.
   regs[E1000_ICR] = 0xffffffff;
 
   e1000_recv();
+  // release(&e1000_lock);
 }
